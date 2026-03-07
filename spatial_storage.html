@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Storage Universe</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #050510;
+            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+            user-select: none; /* Prevent text selection while dragging */
+        }
+
+        #universe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to canvas/files */
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            padding-bottom: 30px;
+        }
+
+        .hud-element {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 10px 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        #search-bar {
+            width: 400px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #search-input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 16px;
+            width: 100%;
+            outline: none;
+            font-family: inherit;
+        }
+
+        #search-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: background 0.2s, transform 0.1s;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* Files Container - moves and scales with the camera */
+        #space-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            z-index: 10;
+        }
+
+        .file-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            transform: translate(-50%, -50%); /* Center on coordinates */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: filter 0.2s;
+            pointer-events: auto;
+        }
+
+        .file-node:hover {
+            filter: drop-shadow(0 0 15px rgba(100, 200, 255, 0.8));
+            z-index: 50;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, rgba(60, 150, 255, 0.8), rgba(120, 60, 255, 0.8));
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .file-icon.image { background: linear-gradient(135deg, rgba(255, 100, 100, 0.8), rgba(255, 180, 60, 0.8)); }
+        .file-icon.folder { background: linear-gradient(135deg, rgba(100, 200, 100, 0.8), rgba(60, 150, 100, 0.8)); }
+
+        .file-label {
+            margin-top: 8px;
+            font-size: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            background: rgba(0,0,0,0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .cluster-label {
+            position: absolute;
+            font-size: 32px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Details Modal */
+        #detail-modal {
+            position: absolute;
+            width: 300px;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+            z-index: 1000;
+            pointer-events: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+            transform-origin: left center;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        .modal-title {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .close-btn {
+            cursor: pointer;
+            color: rgba(255,255,255,0.5);
+        }
+        .close-btn:hover { color: white; }
+
+        .modal-image {
+            width: 100%;
+            height: 120px;
+            background: #333;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .modal-meta {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 10px;
+        }
+
+        .modal-note {
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
+            box-sizing: border-box;
+        }
+
+        /* Instructions Overlay */
+        #instructions {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            pointer-events: none;
+        }
+        .inst-line {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Starfield Background -->
+    <canvas id="universe"></canvas>
+
+    <!-- Interactive Space (scales and pans) -->
+    <div id="space-container">
+        <!-- Cluster Labels -->
+        <div class="cluster-label" style="left: 0px; top: -100px;">Project Alpha</div>
+        <div class="cluster-label" style="left: 1500px; top: 800px;">Archive</div>
+
+        <!-- Populated via JS -->
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-layer">
+        <div id="instructions">
+            <div class="inst-line">🪐 <b>Spatial Storage Universe</b></div>
+            <div class="inst-line">Drag empty space to pan</div>
+            <div class="inst-line">Mouse wheel to zoom</div>
+            <div class="inst-line">Double click empty space to create file</div>
+            <div class="inst-line">Drag files to organize</div>
+            <div class="inst-line">Click file to inspect</div>
+        </div>
+
+        <div id="search-bar" class="hud-element">
+            <span style="margin-right: 10px; opacity: 0.5;">🔍</span>
+            <input type="text" id="search-input" placeholder="Search the universe...">
+        </div>
+
+        <div id="controls" class="hud-element">
+            <div class="icon-btn" id="btn-zoom-in" title="Zoom In">＋</div>
+            <div class="icon-btn" id="btn-zoom-out" title="Zoom Out">－</div>
+            <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 5px;"></div>
+            <div class="icon-btn" id="btn-reset" title="Recenter">⊙</div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detail-modal">
+        <div class="modal-header">
+            <div class="modal-title" id="modal-title">filename.txt</div>
+            <div class="close-btn" id="modal-close">✕</div>
+        </div>
+        <div class="modal-image" id="modal-image" style="display: none;"></div>
+        <div class="modal-meta" id="modal-date">Created: Oct 24, 2023</div>
+        <textarea class="modal-note" placeholder="Add spatial notes..."></textarea>
+    </div>
+
+<script>
+    // --- Camera & State ---
+    const state = {
+        camera: { x: 0, y: 0, zoom: 1 },
+        isPanning: false,
+        lastMouse: { x: 0, y: 0 },
+        draggedFile: null,
+        files: [],
+        activeModalFile: null
+    };
+
+    const container = document.getElementById('space-container');
+    const universeCanvas = document.getElementById('universe');
+    const ctx = universeCanvas.getContext('2d');
+    const modal = document.getElementById('detail-modal');
+
+    // --- Starfield Generation ---
+    let stars = [];
+    function initStars() {
+        stars = [];
+        for(let i=0; i<800; i++) {
+            stars.push({
+                x: (Math.random() - 0.5) * 10000,
+                y: (Math.random() - 0.5) * 10000,
+                z: Math.random() * 2 + 0.1, // depth for parallax
+                size: Math.random() * 2,
+                color: `rgba(${200+Math.random()*55}, ${220+Math.random()*35}, 255, ${Math.random()})`
+            });
+        }
+    }
+
+    function resizeCanvas() {
+        universeCanvas.width = window.innerWidth;
+        universeCanvas.height = window.innerHeight;
+        drawStars();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawStars() {
+        ctx.fillStyle = '#050510';
+        ctx.fillRect(0, 0, universeCanvas.width, universeCanvas.height);
+
+        const cx = universeCanvas.width / 2;
+        const cy = universeCanvas.height / 2;
+
+        stars.forEach(star => {
+            // Calculate screen position based on camera, applying parallax based on Z depth
+            const sx = (star.x - state.camera.x) * state.camera.zoom * (1/star.z) + cx;
+            const sy = (star.y - state.camera.y) * state.camera.zoom * (1/star.z) + cy;
+
+            if(sx > 0 && sx < universeCanvas.width && sy > 0 && sy < universeCanvas.height) {
+                ctx.fillStyle = star.color;
+                ctx.beginPath();
+                // Scale star size slightly with zoom, but keep it subtle
+                ctx.arc(sx, sy, star.size * Math.max(0.5, Math.min(state.camera.zoom, 2)), 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+    }
+
+    // --- Data & File Generation ---
+    function createFileObj(x, y, name, type) {
+        const id = 'file_' + Math.random().toString(36).substr(2, 9);
+        const date = new Date(Date.now() - Math.random() * 10000000000).toLocaleDateString();
+
+        let icon = '📄';
+        if(type === 'image') icon = '🖼️';
+        if(type === 'folder') icon = '📁';
+
+        return { id, x, y, name, type, icon, date, notes: '' };
+    }
+
+    function renderFile(file) {
+        let el = document.getElementById(file.id);
+        if (!el) {
+            el = document.createElement('div');
+            el.id = file.id;
+            el.className = 'file-node';
+
+            const iconEl = document.createElement('div');
+            iconEl.className = `file-icon ${file.type}`;
+            iconEl.innerText = file.icon;
+
+            const labelEl = document.createElement('div');
+            labelEl.className = 'file-label';
+            labelEl.innerText = file.name;
+
+            el.appendChild(iconEl);
+            el.appendChild(labelEl);
+            container.appendChild(el);
+
+            // File Interaction events
+            el.addEventListener('mousedown', (e) => {
+                e.stopPropagation(); // Don't trigger pan
+                state.draggedFile = file;
+                closeModal();
+            });
+
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(!state.draggedFile) { // Don't open if we were just dragging
+                    openModal(file, el);
+                }
+            });
+        }
+
+        // Update position
+        el.style.left = file.x + 'px';
+        el.style.top = file.y + 'px';
+    }
+
+    function initFiles() {
+        // Project Alpha Cluster
+        for(let i=0; i<15; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 300;
+            const types = ['doc', 'image', 'doc', 'folder'];
+            const file = createFileObj(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius,
+                `Alpha_Asset_${i}`,
+                types[Math.floor(Math.random()*types.length)]
+            );
+            state.files.push(file);
+        }
+
+        // Archive Cluster
+        for(let i=0; i<8; i++) {
+            const file = createFileObj(
+                1500 + (Math.random()-0.5) * 400,
+                800 + (Math.random()-0.5) * 400,
+                `Old_Backup_${2020+i}`,
+                'folder'
+            );
+            state.files.push(file);
+        }
+
+        // Scattered files
+        for(let i=0; i<10; i++) {
+            const file = createFileObj(
+                (Math.random()-0.5) * 4000,
+                (Math.random()-0.5) * 4000,
+                `Random_Note_${i}`,
+                'doc'
+            );
+            state.files.push(file);
+        }
+
+        state.files.forEach(renderFile);
+    }
+
+    // --- Transform Engine ---
+    function updateTransform() {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+
+        // The container needs to be translated so that camera.x/y is at the screen center, scaled around that center
+        container.style.transform = `translate(${cx}px, ${cy}px) scale(${state.camera.zoom}) translate(${-state.camera.x}px, ${-state.camera.y}px)`;
+
+        drawStars();
+
+        // Update modal position if attached to a file
+        if(state.activeModalFile && modal.style.display === 'block') {
+            positionModal(state.activeModalFile);
+        }
+    }
+
+    function smoothZoom(targetZoom, x, y) {
+        // Simple momentumless zoom for prototype
+        targetZoom = Math.max(0.1, Math.min(targetZoom, 5));
+        state.camera.zoom = targetZoom;
+        updateTransform();
+    }
+
+    // --- Interactions ---
+
+    // Pan
+    document.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.hud-element') || e.target.closest('#detail-modal')) return;
+
+        state.isPanning = true;
+        state.lastMouse = { x: e.clientX, y: e.clientY };
+        container.style.cursor = 'grabbing';
+        closeModal();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (state.isPanning) {
+            const dx = (e.clientX - state.lastMouse.x) / state.camera.zoom;
+            const dy = (e.clientY - state.lastMouse.y) / state.camera.zoom;
+
+            state.camera.x -= dx;
+            state.camera.y -= dy;
+
+            state.lastMouse = { x: e.clientX, y: e.clientY };
+            updateTransform();
+        } else if (state.draggedFile) {
+            // Move file
+            const dx = (e.clientX - state.lastMouse.x) / state.camera.zoom;
+            const dy = (e.clientY - state.lastMouse.y) / state.camera.zoom;
+
+            state.draggedFile.x += dx;
+            state.draggedFile.y += dy;
+
+            renderFile(state.draggedFile);
+            state.lastMouse = { x: e.clientX, y: e.clientY };
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        state.isPanning = false;
+        container.style.cursor = 'default';
+        if(state.draggedFile) {
+            state.draggedFile = null;
+        }
+    });
+
+    // Zoom
+    document.addEventListener('wheel', (e) => {
+        if (e.target.closest('.hud-element') || e.target.closest('#detail-modal')) return;
+        e.preventDefault();
+
+        const zoomSpeed = 0.001;
+        const delta = -e.deltaY;
+        const zoomFactor = Math.exp(delta * zoomSpeed);
+
+        smoothZoom(state.camera.zoom * zoomFactor);
+    }, { passive: false });
+
+
+    // Create new file
+    document.addEventListener('dblclick', (e) => {
+        if (e.target.closest('.hud-element') || e.target.closest('#detail-modal') || e.target.closest('.file-node')) return;
+
+        // Convert screen coords to world coords
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+
+        const worldX = (e.clientX - cx) / state.camera.zoom + state.camera.x;
+        const worldY = (e.clientY - cy) / state.camera.zoom + state.camera.y;
+
+        const types = ['doc', 'image', 'folder'];
+        const newFile = createFileObj(worldX, worldY, 'New_Entry', types[Math.floor(Math.random()*types.length)]);
+        state.files.push(newFile);
+        renderFile(newFile);
+    });
+
+    // --- Modal Logic ---
+    function openModal(file, element) {
+        state.activeModalFile = file;
+        document.getElementById('modal-title').innerText = file.name;
+        document.getElementById('modal-date').innerText = `Created: ${file.date} \nLocation: [${Math.round(file.x)}, ${Math.round(file.y)}]`;
+
+        const imgEl = document.getElementById('modal-image');
+        if(file.type === 'image') {
+            imgEl.style.display = 'block';
+            // Placeholder gradient for image
+            imgEl.style.background = `linear-gradient(${Math.random()*360}deg, #ff00cc, #333399)`;
+        } else {
+            imgEl.style.display = 'none';
+        }
+
+        modal.style.display = 'block';
+        positionModal(file);
+    }
+
+    function positionModal(file) {
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+
+        // Calculate screen position of the file
+        const screenX = (file.x - state.camera.x) * state.camera.zoom + cx;
+        const screenY = (file.y - state.camera.y) * state.camera.zoom + cy;
+
+        // Position modal to the right of the file icon
+        modal.style.left = `${screenX + (40 * state.camera.zoom)}px`;
+        modal.style.top = `${screenY - (100 * state.camera.zoom)}px`;
+
+        // Scale modal slightly with zoom, but clamp it so it remains readable
+        const modalScale = Math.max(0.7, Math.min(state.camera.zoom, 1.2));
+        modal.style.transform = `scale(${modalScale})`;
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+        state.activeModalFile = null;
+    }
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+
+    // --- UI Controls ---
+    document.getElementById('btn-zoom-in').addEventListener('click', () => smoothZoom(state.camera.zoom * 1.5));
+    document.getElementById('btn-zoom-out').addEventListener('click', () => smoothZoom(state.camera.zoom / 1.5));
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        state.camera.x = 0;
+        state.camera.y = 0;
+        smoothZoom(1);
+    });
+
+    // Search simulation
+    document.getElementById('search-input').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') {
+            const query = e.target.value.toLowerCase();
+            const match = state.files.find(f => f.name.toLowerCase().includes(query));
+            if(match) {
+                // Jump to file
+                state.camera.x = match.x;
+                state.camera.y = match.y;
+                smoothZoom(2); // Zoom in on it
+
+                // Highlight it briefly
+                const el = document.getElementById(match.id);
+                if(el) {
+                    el.style.filter = 'drop-shadow(0 0 30px rgba(255,255,255,1)) scale(1.2)';
+                    setTimeout(() => {
+                        el.style.filter = '';
+                    }, 1000);
+                }
+            }
+            e.target.value = '';
+            e.target.blur();
+        }
+    });
+
+    // --- Init ---
+    initStars();
+    resizeCanvas();
+    initFiles();
+    updateTransform();
+
+</script>
+</body>
+</html>
