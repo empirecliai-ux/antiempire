@@ -3,308 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spatial Storage Universe</title>
+    <title>Spatial Storage Universe - V2</title>
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
+            margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden;
-            background-color: #050510;
-            font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: white;
-            user-select: none; /* Prevent text selection while dragging */
+            background-color: #020205; /* Deep deep space */
+            font-family: 'Space Grotesk', -apple-system, sans-serif;
+            color: white; user-select: none;
         }
 
+        /* 1) Canvas for Starfield, Nebulas, Connections, and Particles */
         #universe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
         }
 
-        /* UI Overlay */
-        #ui-layer {
+        /* 2) DOM Layer for Interactive Files */
+        #space-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            transform-origin: 0 0; z-index: 10;
+        }
+
+        /* Holographic sci-fi file node */
+        .file-node {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Let clicks pass through to canvas/files */
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            align-items: center;
-            padding-bottom: 30px;
+            width: 80px; height: 80px;
+            transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; pointer-events: auto;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .file-node:hover {
+            transform: translate(-50%, -50%) scale(1.15);
+            z-index: 50;
+        }
+
+        /* The glowing core of the file */
+        .file-icon {
+            width: 50px; height: 50px;
+            border-radius: 12px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px;
+            /* Base glassmorphism/hologram look */
+            background: rgba(20, 30, 60, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(100, 200, 255, 0.4);
+            box-shadow:
+                inset 0 0 20px rgba(100, 200, 255, 0.2),
+                0 0 15px rgba(100, 200, 255, 0.3),
+                0 0 40px rgba(100, 200, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animated scanner line effect */
+        .file-icon::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transform: rotate(45deg);
+            animation: scanline 4s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%) rotate(45deg); }
+            100% { transform: translateY(100%) rotate(45deg); }
+        }
+
+        /* Type specific glowing colors */
+        .file-node.type-doc .file-icon {
+            border-color: rgba(60, 150, 255, 0.6);
+            box-shadow: inset 0 0 20px rgba(60, 150, 255, 0.3), 0 0 20px rgba(60, 150, 255, 0.4);
+        }
+        .file-node.type-image .file-icon {
+            border-color: rgba(255, 100, 200, 0.6);
+            box-shadow: inset 0 0 20px rgba(255, 100, 200, 0.3), 0 0 20px rgba(255, 100, 200, 0.4);
+        }
+        .file-node.type-folder .file-icon {
+            border-color: rgba(100, 255, 150, 0.6);
+            box-shadow: inset 0 0 20px rgba(100, 255, 150, 0.3), 0 0 20px rgba(100, 255, 150, 0.4);
+        }
+
+        .file-label {
+            margin-top: 12px;
+            font-size: 13px; font-weight: 500; letter-spacing: 0.5px;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 0 8px rgba(0,0,0,1), 0 0 15px rgba(100,200,255,0.5);
+            white-space: nowrap;
+            background: rgba(5, 10, 20, 0.7);
+            padding: 4px 10px; border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Floating 3D Cluster Labels */
+        .cluster-label {
+            position: absolute;
+            font-size: 48px; font-weight: 900;
+            color: transparent;
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15);
+            text-transform: uppercase; letter-spacing: 12px;
+            pointer-events: none; transform: translate(-50%, -50%);
+            text-shadow: 0 0 50px rgba(100, 200, 255, 0.1);
+            z-index: 5;
+        }
+
+        /* --- UI Overlay --- */
+        #ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            padding-bottom: 40px;
         }
 
         .hud-element {
             pointer-events: auto;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 30px;
-            padding: 10px 20px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            background: rgba(10, 15, 30, 0.6);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 40px; padding: 12px 25px;
+            box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1);
         }
 
-        #search-bar {
-            width: 400px;
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
+        #search-bar { width: 500px; display: flex; align-items: center; margin-bottom: 25px; position: relative; }
 
         #search-input {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 16px;
-            width: 100%;
-            outline: none;
-            font-family: inherit;
+            background: transparent; border: none; color: white;
+            font-size: 18px; width: 100%; outline: none; font-family: inherit;
+            padding-left: 10px;
         }
+        #search-input::placeholder { color: rgba(255, 255, 255, 0.3); }
 
-        #search-input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        #controls {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            display: flex;
-            gap: 10px;
-        }
+        #controls { position: absolute; bottom: 40px; right: 40px; display: flex; gap: 15px; }
 
         .icon-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
-            font-size: 20px;
-            transition: background 0.2s, transform 0.1s;
-            color: rgba(255, 255, 255, 0.7);
+            width: 50px; height: 50px; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; font-size: 22px;
+            transition: all 0.2s ease;
+            color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255,255,255,0.05);
         }
 
         .icon-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-            transform: scale(1.05);
-        }
-
-        /* Files Container - moves and scales with the camera */
-        #space-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            transform-origin: 0 0;
-            z-index: 10;
-        }
-
-        .file-node {
-            position: absolute;
-            width: 60px;
-            height: 60px;
-            transform: translate(-50%, -50%); /* Center on coordinates */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: filter 0.2s;
-            pointer-events: auto;
-        }
-
-        .file-node:hover {
-            filter: drop-shadow(0 0 15px rgba(100, 200, 255, 0.8));
-            z-index: 50;
-        }
-
-        .file-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, rgba(60, 150, 255, 0.8), rgba(120, 60, 255, 0.8));
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            box-shadow: inset 0 0 10px rgba(255,255,255,0.2), 0 4px 10px rgba(0,0,0,0.5);
-        }
-
-        .file-icon.image { background: linear-gradient(135deg, rgba(255, 100, 100, 0.8), rgba(255, 180, 60, 0.8)); }
-        .file-icon.folder { background: linear-gradient(135deg, rgba(100, 200, 100, 0.8), rgba(60, 150, 100, 0.8)); }
-
-        .file-label {
-            margin-top: 8px;
-            font-size: 12px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-            white-space: nowrap;
-            background: rgba(0,0,0,0.4);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
-        .cluster-label {
-            position: absolute;
-            font-size: 32px;
-            font-weight: bold;
-            color: rgba(255, 255, 255, 0.2);
-            text-transform: uppercase;
-            letter-spacing: 4px;
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-        }
-
-        /* Details Modal */
-        #detail-modal {
-            position: absolute;
-            width: 300px;
-            background: rgba(20, 20, 30, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 12px;
-            padding: 20px;
-            display: none;
-            z-index: 1000;
-            pointer-events: auto;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
-            transform-origin: left center;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding-bottom: 10px;
-        }
-
-        .modal-title {
-            font-weight: bold;
-            font-size: 18px;
-        }
-
-        .close-btn {
-            cursor: pointer;
-            color: rgba(255,255,255,0.5);
-        }
-        .close-btn:hover { color: white; }
-
-        .modal-image {
-            width: 100%;
-            height: 120px;
-            background: #333;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            background-size: cover;
-            background-position: center;
-        }
-
-        .modal-meta {
-            font-size: 11px;
-            color: rgba(255,255,255,0.4);
-            margin-bottom: 10px;
-        }
-
-        .modal-note {
-            width: 100%;
-            background: rgba(0,0,0,0.3);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: white;
-            padding: 10px;
-            border-radius: 6px;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 60px;
-            box-sizing: border-box;
+            background: rgba(100, 200, 255, 0.15);
+            color: #fff; transform: scale(1.1);
+            border-color: rgba(100, 200, 255, 0.4);
+            box-shadow: 0 0 20px rgba(100, 200, 255, 0.3);
         }
 
         /* Instructions Overlay */
         #instructions {
-            position: absolute;
-            top: 30px;
-            left: 30px;
-            pointer-events: none;
+            position: absolute; top: 40px; left: 40px; pointer-events: none;
+            background: linear-gradient(135deg, rgba(10, 15, 30, 0.8), rgba(5, 5, 10, 0.4));
+            padding: 20px; border-radius: 12px; border-left: 3px solid #3c96ff;
+            backdrop-filter: blur(10px);
         }
-        .inst-line {
-            font-size: 13px;
-            color: rgba(255,255,255,0.5);
-            margin-bottom: 5px;
+        .inst-title { font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 10px; letter-spacing: 1px; }
+        .inst-line { font-size: 14px; color: rgba(255,255,255,0.6); margin-bottom: 8px; display: flex; align-items: center; }
+        .inst-key { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 8px; font-family: monospace; font-size: 12px; color: #3c96ff;}
+
+        /* --- Details Modal (Sci-Fi Hologram Style) --- */
+        #detail-modal {
+            position: absolute; width: 340px;
+            background: rgba(10, 15, 25, 0.8);
+            backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 16px; padding: 25px;
+            display: none; z-index: 1000; pointer-events: auto;
+            box-shadow:
+                0 30px 60px rgba(0,0,0,0.8),
+                0 0 0 1px rgba(255,255,255,0.05) inset,
+                0 0 40px rgba(60, 150, 255, 0.2);
+            transform-origin: left center;
+            opacity: 0; transition: opacity 0.3s ease;
         }
+
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(100,200,255,0.2); padding-bottom: 15px; }
+        .modal-title { font-weight: bold; font-size: 20px; color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        .close-btn { cursor: pointer; color: rgba(255,255,255,0.4); font-size: 20px; transition: color 0.2s; }
+        .close-btn:hover { color: #ff4444; text-shadow: 0 0 10px rgba(255,0,0,0.5); }
+        .modal-image { width: 100%; height: 160px; background: #222; border-radius: 8px; margin-bottom: 20px; background-size: cover; background-position: center; border: 1px solid rgba(255,255,255,0.1); }
+        .modal-meta { font-size: 12px; color: rgba(100, 200, 255, 0.7); margin-bottom: 15px; font-family: monospace; }
+        .modal-note { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 15px; border-radius: 8px; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box; font-size: 14px; line-height: 1.5; outline: none; transition: border-color 0.2s; }
+        .modal-note:focus { border-color: rgba(100, 200, 255, 0.5); box-shadow: 0 0 15px rgba(100, 200, 255, 0.1) inset; }
+
+        /* Crosshair in center to feel like a cockpit */
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40px; height: 40px; pointer-events: none; z-index: 2; opacity: 0.15;
+        }
+        #crosshair::before, #crosshair::after { content:''; position: absolute; background: white; }
+        #crosshair::before { top: 19px; left: 0; width: 40px; height: 2px; }
+        #crosshair::after { left: 19px; top: 0; width: 2px; height: 40px; }
     </style>
 </head>
 <body>
 
-    <!-- Starfield Background -->
+    <!-- Continuous Game Loop Canvas -->
     <canvas id="universe"></canvas>
 
-    <!-- Interactive Space (scales and pans) -->
-    <div id="space-container">
-        <!-- Cluster Labels -->
-        <div class="cluster-label" style="left: 0px; top: -100px;">Project Alpha</div>
-        <div class="cluster-label" style="left: 1500px; top: 800px;">Archive</div>
+    <div id="crosshair"></div>
 
-        <!-- Populated via JS -->
+    <!-- Interactive Space -->
+    <div id="space-container">
+        <div class="cluster-label" style="left: 0px; top: -150px;">Project Alpha</div>
+        <div class="cluster-label" style="left: 2000px; top: -800px; color: rgba(255,100,200,0.05); text-shadow: none;">Creative Brainstorm</div>
+        <div class="cluster-label" style="left: -1500px; top: 1500px; color: rgba(100,255,150,0.05); text-shadow: none;">Deep Archive</div>
     </div>
 
     <!-- UI Overlay -->
     <div id="ui-layer">
         <div id="instructions">
-            <div class="inst-line">🪐 <b>Spatial Storage Universe</b></div>
-            <div class="inst-line">Drag empty space to pan</div>
-            <div class="inst-line">Mouse wheel to zoom</div>
-            <div class="inst-line">Double click empty space to create file</div>
-            <div class="inst-line">Drag files to organize</div>
-            <div class="inst-line">Click file to inspect</div>
+            <div class="inst-title">SPATIAL.OS // V2.0</div>
+            <div class="inst-line"><span class="inst-key">LMB Drag</span> Pan Camera</div>
+            <div class="inst-line"><span class="inst-key">Scroll</span> Hyper-Zoom</div>
+            <div class="inst-line"><span class="inst-key">Double Click</span> Materialize File</div>
+            <div class="inst-line"><span class="inst-key">Drag Icon</span> Spatial Reorganization</div>
+            <div class="inst-line"><span class="inst-key">Click Icon</span> Holographic Inspection</div>
         </div>
 
         <div id="search-bar" class="hud-element">
-            <span style="margin-right: 10px; opacity: 0.5;">🔍</span>
-            <input type="text" id="search-input" placeholder="Search the universe...">
+            <span style="margin-right: 15px; opacity: 0.5; font-size: 20px;">⌘</span>
+            <input type="text" id="search-input" placeholder="Query the cosmos...">
         </div>
 
         <div id="controls" class="hud-element">
             <div class="icon-btn" id="btn-zoom-in" title="Zoom In">＋</div>
             <div class="icon-btn" id="btn-zoom-out" title="Zoom Out">－</div>
             <div style="width: 1px; background: rgba(255,255,255,0.1); margin: 5px;"></div>
-            <div class="icon-btn" id="btn-reset" title="Recenter">⊙</div>
+            <div class="icon-btn" id="btn-reset" title="Recenter Target">⊙</div>
         </div>
     </div>
 
     <!-- Details Modal -->
     <div id="detail-modal">
         <div class="modal-header">
-            <div class="modal-title" id="modal-title">filename.txt</div>
+            <div class="modal-title" id="modal-title">filename.dat</div>
             <div class="close-btn" id="modal-close">✕</div>
         </div>
         <div class="modal-image" id="modal-image" style="display: none;"></div>
-        <div class="modal-meta" id="modal-date">Created: Oct 24, 2023</div>
-        <textarea class="modal-note" placeholder="Add spatial notes..."></textarea>
+        <div class="modal-meta" id="modal-date">SEC: 1042340<br>LOC: [X, Y]</div>
+        <textarea class="modal-note" placeholder="Input spatial memory matrix..."></textarea>
     </div>
 
 <script>
-    // --- Camera & State ---
+    // --- Physics & Camera State (Cinematic Lerping) ---
     const state = {
         camera: { x: 0, y: 0, zoom: 1 },
+        targetCamera: { x: 0, y: 0, zoom: 1 }, // Used for buttery smooth panning
         isPanning: false,
         lastMouse: { x: 0, y: 0 },
         draggedFile: null,
         files: [],
-        activeModalFile: null
+        activeModalFile: null,
+        particles: [],
+        time: 0
     };
 
     const container = document.getElementById('space-container');
@@ -312,17 +267,37 @@
     const ctx = universeCanvas.getContext('2d');
     const modal = document.getElementById('detail-modal');
 
-    // --- Starfield Generation ---
+    // Lerp helper
+    const lerp = (start, end, amt) => (1 - amt) * start + amt * end;
+
+    // --- Starfield & Nebula Generation ---
     let stars = [];
-    function initStars() {
+    let nebulas = [];
+
+    function initUniverse() {
         stars = [];
-        for(let i=0; i<800; i++) {
+        // 3 Layers of parallax stars
+        for(let i=0; i<1500; i++) {
+            const z = Math.random() < 0.8 ? (Math.random() * 2 + 1) : (Math.random() * 8 + 3); // More deep stars
             stars.push({
-                x: (Math.random() - 0.5) * 10000,
-                y: (Math.random() - 0.5) * 10000,
-                z: Math.random() * 2 + 0.1, // depth for parallax
-                size: Math.random() * 2,
-                color: `rgba(${200+Math.random()*55}, ${220+Math.random()*35}, 255, ${Math.random()})`
+                x: (Math.random() - 0.5) * 20000,
+                y: (Math.random() - 0.5) * 20000,
+                z: z,
+                size: Math.random() * 1.5 + 0.5,
+                twinkleSpeed: Math.random() * 0.05 + 0.01,
+                twinkleOffset: Math.random() * Math.PI * 2,
+                color: `hsla(${200 + Math.random()*60}, ${50+Math.random()*50}%, ${80+Math.random()*20}%, 1)`
+            });
+        }
+
+        // Space gas / Nebulas
+        for(let i=0; i<20; i++) {
+            nebulas.push({
+                x: (Math.random() - 0.5) * 15000,
+                y: (Math.random() - 0.5) * 15000,
+                radius: 1000 + Math.random() * 3000,
+                hue: Math.random() < 0.5 ? (200 + Math.random()*40) : (280 + Math.random()*50), // Blues and Purples
+                alpha: Math.random() * 0.03 + 0.01
             });
         }
     }
@@ -330,31 +305,8 @@
     function resizeCanvas() {
         universeCanvas.width = window.innerWidth;
         universeCanvas.height = window.innerHeight;
-        drawStars();
     }
     window.addEventListener('resize', resizeCanvas);
-
-    function drawStars() {
-        ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, universeCanvas.width, universeCanvas.height);
-
-        const cx = universeCanvas.width / 2;
-        const cy = universeCanvas.height / 2;
-
-        stars.forEach(star => {
-            // Calculate screen position based on camera, applying parallax based on Z depth
-            const sx = (star.x - state.camera.x) * state.camera.zoom * (1/star.z) + cx;
-            const sy = (star.y - state.camera.y) * state.camera.zoom * (1/star.z) + cy;
-
-            if(sx > 0 && sx < universeCanvas.width && sy > 0 && sy < universeCanvas.height) {
-                ctx.fillStyle = star.color;
-                ctx.beginPath();
-                // Scale star size slightly with zoom, but keep it subtle
-                ctx.arc(sx, sy, star.size * Math.max(0.5, Math.min(state.camera.zoom, 2)), 0, Math.PI * 2);
-                ctx.fill();
-            }
-        });
-    }
 
     // --- Data & File Generation ---
     function createFileObj(x, y, name, type) {
@@ -368,15 +320,15 @@
         return { id, x, y, name, type, icon, date, notes: '' };
     }
 
-    function renderFile(file) {
+    function renderFileDOM(file) {
         let el = document.getElementById(file.id);
         if (!el) {
             el = document.createElement('div');
             el.id = file.id;
-            el.className = 'file-node';
+            el.className = `file-node type-${file.type}`;
 
             const iconEl = document.createElement('div');
-            iconEl.className = `file-icon ${file.type}`;
+            iconEl.className = `file-icon`;
             iconEl.innerText = file.icon;
 
             const labelEl = document.createElement('div');
@@ -387,31 +339,31 @@
             el.appendChild(labelEl);
             container.appendChild(el);
 
-            // File Interaction events
+            // Interaction
             el.addEventListener('mousedown', (e) => {
-                e.stopPropagation(); // Don't trigger pan
+                e.stopPropagation();
                 state.draggedFile = file;
                 closeModal();
             });
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if(!state.draggedFile) { // Don't open if we were just dragging
+                if(!state.draggedFile) {
                     openModal(file, el);
+                    spawnParticles(file.x, file.y, 10, file.type); // Click explosion
                 }
             });
         }
 
-        // Update position
         el.style.left = file.x + 'px';
         el.style.top = file.y + 'px';
     }
 
     function initFiles() {
-        // Project Alpha Cluster
-        for(let i=0; i<15; i++) {
+        // Center Cluster (Project Alpha)
+        for(let i=0; i<20; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = Math.random() * 300;
+            const radius = Math.random() * 350; // Tighter cluster for better connections
             const types = ['doc', 'image', 'doc', 'folder'];
             const file = createFileObj(
                 Math.cos(angle) * radius,
@@ -422,52 +374,201 @@
             state.files.push(file);
         }
 
-        // Archive Cluster
-        for(let i=0; i<8; i++) {
+        // Distant Archive Cluster
+        for(let i=0; i<12; i++) {
             const file = createFileObj(
-                1500 + (Math.random()-0.5) * 400,
-                800 + (Math.random()-0.5) * 400,
-                `Old_Backup_${2020+i}`,
-                'folder'
-            );
-            state.files.push(file);
-        }
-
-        // Scattered files
-        for(let i=0; i<10; i++) {
-            const file = createFileObj(
-                (Math.random()-0.5) * 4000,
-                (Math.random()-0.5) * 4000,
-                `Random_Note_${i}`,
+                -1500 + (Math.random()-0.5) * 600,
+                1500 + (Math.random()-0.5) * 600,
+                `Sys_Log_${2010+i}`,
                 'doc'
             );
             state.files.push(file);
         }
 
-        state.files.forEach(renderFile);
+        // Creative Cluster
+        for(let i=0; i<15; i++) {
+            const file = createFileObj(
+                2000 + (Math.random()-0.5) * 500,
+                -800 + (Math.random()-0.5) * 500,
+                `Concept_Art_${i}`,
+                'image'
+            );
+            state.files.push(file);
+        }
+
+        // Deep Space anomalies (scattered)
+        for(let i=0; i<30; i++) {
+            const file = createFileObj(
+                (Math.random()-0.5) * 8000,
+                (Math.random()-0.5) * 8000,
+                `Anomaly_${i}`,
+                Math.random() > 0.5 ? 'doc' : 'folder'
+            );
+            state.files.push(file);
+        }
+
+        state.files.forEach(renderFileDOM);
     }
 
-    // --- Transform Engine ---
-    function updateTransform() {
-        const cx = window.innerWidth / 2;
-        const cy = window.innerHeight / 2;
+    // --- Particle System ---
+    function spawnParticles(x, y, count, type) {
+        let color = '255, 255, 255'; // default
+        if (type === 'doc') color = '100, 200, 255';
+        if (type === 'image') color = '255, 100, 200';
+        if (type === 'folder') color = '100, 255, 150';
 
-        // The container needs to be translated so that camera.x/y is at the screen center, scaled around that center
-        container.style.transform = `translate(${cx}px, ${cy}px) scale(${state.camera.zoom}) translate(${-state.camera.x}px, ${-state.camera.y}px)`;
-
-        drawStars();
-
-        // Update modal position if attached to a file
-        if(state.activeModalFile && modal.style.display === 'block') {
-            positionModal(state.activeModalFile);
+        for(let i=0; i<count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 5 + 2;
+            state.particles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                life: 1.0, decay: Math.random() * 0.02 + 0.02,
+                size: Math.random() * 4 + 2,
+                color: color
+            });
         }
     }
 
-    function smoothZoom(targetZoom, x, y) {
-        // Simple momentumless zoom for prototype
-        targetZoom = Math.max(0.1, Math.min(targetZoom, 5));
-        state.camera.zoom = targetZoom;
-        updateTransform();
+    // --- The Render Loop (The "Wow" Factor) ---
+    function renderGameLoop() {
+        state.time += 0.016;
+
+        // Cinematic Lerping for camera position and zoom
+        state.camera.x = lerp(state.camera.x, state.targetCamera.x, 0.1);
+        state.camera.y = lerp(state.camera.y, state.targetCamera.y, 0.1);
+        state.camera.zoom = lerp(state.camera.zoom, state.targetCamera.zoom, 0.1);
+
+        // Update DOM transform
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        container.style.transform = `translate(${cx}px, ${cy}px) scale(${state.camera.zoom}) translate(${-state.camera.x}px, ${-state.camera.y}px)`;
+
+        if(state.activeModalFile && modal.style.opacity === '1') { positionModal(state.activeModalFile); }
+
+        // --- Canvas Rendering ---
+        // Clear with slight trail effect
+        ctx.fillStyle = 'rgba(2, 2, 5, 1)';
+        ctx.fillRect(0, 0, universeCanvas.width, universeCanvas.height);
+
+        // 1. Draw Nebulas
+        ctx.globalCompositeOperation = 'screen';
+        nebulas.forEach(neb => {
+            const sx = (neb.x - state.camera.x) * state.camera.zoom * 0.2 + cx; // extreme parallax
+            const sy = (neb.y - state.camera.y) * state.camera.zoom * 0.2 + cy;
+            const sr = neb.radius * Math.max(0.2, state.camera.zoom);
+
+            if(sx > -sr && sx < universeCanvas.width + sr && sy > -sr && sy < universeCanvas.height + sr) {
+                const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr);
+                grad.addColorStop(0, `hsla(${neb.hue}, 80%, 50%, ${neb.alpha})`);
+                grad.addColorStop(1, `hsla(${neb.hue}, 80%, 20%, 0)`);
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill();
+            }
+        });
+        ctx.globalCompositeOperation = 'source-over';
+
+        // 2. Draw Stars
+        stars.forEach(star => {
+            const sx = (star.x - state.camera.x) * state.camera.zoom * (1/star.z) + cx;
+            const sy = (star.y - state.camera.y) * state.camera.zoom * (1/star.z) + cy;
+
+            if(sx > 0 && sx < universeCanvas.width && sy > 0 && sy < universeCanvas.height) {
+                const twinkle = (Math.sin(state.time * star.twinkleSpeed * 60 + star.twinkleOffset) + 1) / 2; // 0 to 1
+                const finalAlpha = 0.2 + (twinkle * 0.8);
+
+                // Parse color to inject twinkle alpha (hacky but works for demo)
+                const baseColor = star.color.replace('1)', `${finalAlpha})`);
+
+                ctx.fillStyle = baseColor;
+                ctx.beginPath();
+                ctx.arc(sx, sy, star.size * Math.max(0.3, Math.min(state.camera.zoom, 2)), 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bright stars get a glow
+                if(star.size > 1.8 && twinkle > 0.8) {
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = 'white';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+        });
+
+        // 3. Draw Constellation Connections (The Cluster Effect)
+        ctx.lineWidth = 1.5 * state.camera.zoom;
+        ctx.lineCap = 'round';
+
+        // Find pairs close to each other
+        const CONNECTION_DIST = 400; // World space
+        for(let i=0; i<state.files.length; i++) {
+            for(let j=i+1; j<state.files.length; j++) {
+                const f1 = state.files[i];
+                const f2 = state.files[j];
+                const dx = f1.x - f2.x;
+                const dy = f1.y - f2.y;
+                const distSq = dx*dx + dy*dy;
+
+                if(distSq < CONNECTION_DIST * CONNECTION_DIST) {
+                    const dist = Math.sqrt(distSq);
+                    const strength = 1 - (dist / CONNECTION_DIST); // 1 = touching, 0 = at max distance
+
+                    const sx1 = (f1.x - state.camera.x) * state.camera.zoom + cx;
+                    const sy1 = (f1.y - state.camera.y) * state.camera.zoom + cy;
+                    const sx2 = (f2.x - state.camera.x) * state.camera.zoom + cx;
+                    const sy2 = (f2.y - state.camera.y) * state.camera.zoom + cy;
+
+                    // Only draw if on screen (optimization)
+                    if( (sx1 > 0 && sx1 < universeCanvas.width && sy1 > 0 && sy1 < universeCanvas.height) ||
+                        (sx2 > 0 && sx2 < universeCanvas.width && sy2 > 0 && sy2 < universeCanvas.height) ) {
+
+                        // Pulsing connection lines
+                        const pulse = (Math.sin(state.time * 2 + (f1.x + f2.x)*0.01) + 1) / 2;
+                        const lineAlpha = strength * (0.1 + pulse * 0.3);
+
+                        ctx.strokeStyle = `rgba(100, 200, 255, ${lineAlpha})`;
+                        ctx.beginPath();
+                        ctx.moveTo(sx1, sy1);
+                        ctx.lineTo(sx2, sy2);
+                        ctx.stroke();
+
+                        // Glowing dots moving along lines (Data Transfer effect)
+                        if(strength > 0.5 && pulse > 0.8) {
+                            const prog = (state.time * 0.5 + i*0.1) % 1;
+                            const tx = sx1 + (sx2 - sx1) * prog;
+                            const ty = sy1 + (sy2 - sy1) * prog;
+                            ctx.fillStyle = `rgba(255,255,255, ${strength})`;
+                            ctx.beginPath(); ctx.arc(tx, ty, 2 * state.camera.zoom, 0, Math.PI*2); ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Draw Particles (Local World Space)
+        for(let i = state.particles.length - 1; i >= 0; i--) {
+            let p = state.particles[i];
+            p.x += p.vx; p.y += p.vy;
+            p.life -= p.decay;
+
+            if(p.life <= 0) {
+                state.particles.splice(i, 1);
+                continue;
+            }
+
+            const sx = (p.x - state.camera.x) * state.camera.zoom + cx;
+            const sy = (p.y - state.camera.y) * state.camera.zoom + cy;
+
+            ctx.fillStyle = `rgba(${p.color}, ${p.life})`;
+            ctx.shadowBlur = 10 * state.camera.zoom;
+            ctx.shadowColor = `rgba(${p.color}, 1)`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, p.size * state.camera.zoom * p.life, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0; // reset
+        }
+
+        requestAnimationFrame(renderGameLoop);
     }
 
     // --- Interactions ---
@@ -475,7 +576,6 @@
     // Pan
     document.addEventListener('mousedown', (e) => {
         if (e.target.closest('.hud-element') || e.target.closest('#detail-modal')) return;
-
         state.isPanning = true;
         state.lastMouse = { x: e.clientX, y: e.clientY };
         container.style.cursor = 'grabbing';
@@ -487,132 +587,133 @@
             const dx = (e.clientX - state.lastMouse.x) / state.camera.zoom;
             const dy = (e.clientY - state.lastMouse.y) / state.camera.zoom;
 
-            state.camera.x -= dx;
-            state.camera.y -= dy;
+            // Adjust target, Lerp will catch up
+            state.targetCamera.x -= dx;
+            state.targetCamera.y -= dy;
 
             state.lastMouse = { x: e.clientX, y: e.clientY };
-            updateTransform();
         } else if (state.draggedFile) {
-            // Move file
             const dx = (e.clientX - state.lastMouse.x) / state.camera.zoom;
             const dy = (e.clientY - state.lastMouse.y) / state.camera.zoom;
-
             state.draggedFile.x += dx;
             state.draggedFile.y += dy;
-
-            renderFile(state.draggedFile);
+            renderFileDOM(state.draggedFile);
             state.lastMouse = { x: e.clientX, y: e.clientY };
+
+            // Trailing particles while dragging
+            if(Math.random() > 0.5) spawnParticles(state.draggedFile.x, state.draggedFile.y, 1, state.draggedFile.type);
         }
     });
 
     document.addEventListener('mouseup', () => {
         state.isPanning = false;
         container.style.cursor = 'default';
-        if(state.draggedFile) {
-            state.draggedFile = null;
-        }
+        if(state.draggedFile) state.draggedFile = null;
     });
 
     // Zoom
     document.addEventListener('wheel', (e) => {
         if (e.target.closest('.hud-element') || e.target.closest('#detail-modal')) return;
         e.preventDefault();
-
-        const zoomSpeed = 0.001;
+        const zoomSpeed = 0.0015;
         const delta = -e.deltaY;
         const zoomFactor = Math.exp(delta * zoomSpeed);
 
-        smoothZoom(state.camera.zoom * zoomFactor);
+        let newZoom = state.targetCamera.zoom * zoomFactor;
+        newZoom = Math.max(0.05, Math.min(newZoom, 5)); // extreme zoom bounds
+        state.targetCamera.zoom = newZoom;
     }, { passive: false });
-
 
     // Create new file
     document.addEventListener('dblclick', (e) => {
         if (e.target.closest('.hud-element') || e.target.closest('#detail-modal') || e.target.closest('.file-node')) return;
 
-        // Convert screen coords to world coords
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
-
         const worldX = (e.clientX - cx) / state.camera.zoom + state.camera.x;
         const worldY = (e.clientY - cy) / state.camera.zoom + state.camera.y;
 
         const types = ['doc', 'image', 'folder'];
-        const newFile = createFileObj(worldX, worldY, 'New_Entry', types[Math.floor(Math.random()*types.length)]);
+        const type = types[Math.floor(Math.random()*types.length)];
+        const newFile = createFileObj(worldX, worldY, 'New_Spatial_Node', type);
         state.files.push(newFile);
-        renderFile(newFile);
+        renderFileDOM(newFile);
+
+        // Massive explosion for creation
+        spawnParticles(worldX, worldY, 50, type);
     });
 
     // --- Modal Logic ---
     function openModal(file, element) {
         state.activeModalFile = file;
         document.getElementById('modal-title').innerText = file.name;
-        document.getElementById('modal-date').innerText = `Created: ${file.date} \nLocation: [${Math.round(file.x)}, ${Math.round(file.y)}]`;
+        document.getElementById('modal-date').innerHTML = `SYSTEM TIME: ${file.date} <br>SPATIAL COORD: [${Math.round(file.x)}, ${Math.round(file.y)}]`;
 
         const imgEl = document.getElementById('modal-image');
         if(file.type === 'image') {
             imgEl.style.display = 'block';
-            // Placeholder gradient for image
             imgEl.style.background = `linear-gradient(${Math.random()*360}deg, #ff00cc, #333399)`;
         } else {
             imgEl.style.display = 'none';
         }
 
         modal.style.display = 'block';
+        setTimeout(()=> modal.style.opacity = '1', 10); // CSS transition fade in
         positionModal(file);
     }
 
     function positionModal(file) {
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
-
-        // Calculate screen position of the file
         const screenX = (file.x - state.camera.x) * state.camera.zoom + cx;
         const screenY = (file.y - state.camera.y) * state.camera.zoom + cy;
 
-        // Position modal to the right of the file icon
-        modal.style.left = `${screenX + (40 * state.camera.zoom)}px`;
+        modal.style.left = `${screenX + (60 * state.camera.zoom)}px`;
         modal.style.top = `${screenY - (100 * state.camera.zoom)}px`;
 
-        // Scale modal slightly with zoom, but clamp it so it remains readable
         const modalScale = Math.max(0.7, Math.min(state.camera.zoom, 1.2));
         modal.style.transform = `scale(${modalScale})`;
     }
 
     function closeModal() {
-        modal.style.display = 'none';
+        modal.style.opacity = '0';
+        setTimeout(() => { if(modal.style.opacity==='0') modal.style.display = 'none'; }, 300);
         state.activeModalFile = null;
     }
 
     document.getElementById('modal-close').addEventListener('click', closeModal);
 
     // --- UI Controls ---
-    document.getElementById('btn-zoom-in').addEventListener('click', () => smoothZoom(state.camera.zoom * 1.5));
-    document.getElementById('btn-zoom-out').addEventListener('click', () => smoothZoom(state.camera.zoom / 1.5));
+    document.getElementById('btn-zoom-in').addEventListener('click', () => state.targetCamera.zoom *= 1.5);
+    document.getElementById('btn-zoom-out').addEventListener('click', () => state.targetCamera.zoom /= 1.5);
     document.getElementById('btn-reset').addEventListener('click', () => {
-        state.camera.x = 0;
-        state.camera.y = 0;
-        smoothZoom(1);
+        state.targetCamera.x = 0;
+        state.targetCamera.y = 0;
+        state.targetCamera.zoom = 1;
     });
 
-    // Search simulation
+    // Search Jump (Cinematic)
     document.getElementById('search-input').addEventListener('keypress', (e) => {
         if(e.key === 'Enter') {
             const query = e.target.value.toLowerCase();
             const match = state.files.find(f => f.name.toLowerCase().includes(query));
             if(match) {
-                // Jump to file
-                state.camera.x = match.x;
-                state.camera.y = match.y;
-                smoothZoom(2); // Zoom in on it
+                // Smooth camera jump
+                state.targetCamera.x = match.x;
+                state.targetCamera.y = match.y;
+                state.targetCamera.zoom = 2;
 
-                // Highlight it briefly
+                // Holographic pulse highlight
                 const el = document.getElementById(match.id);
                 if(el) {
-                    el.style.filter = 'drop-shadow(0 0 30px rgba(255,255,255,1)) scale(1.2)';
+                    const icon = el.querySelector('.file-icon');
+                    icon.style.boxShadow = '0 0 100px rgba(255,255,255,1)';
+                    icon.style.transform = 'scale(1.5)';
+                    spawnParticles(match.x, match.y, 30, match.type);
                     setTimeout(() => {
-                        el.style.filter = '';
-                    }, 1000);
+                        icon.style.boxShadow = '';
+                        icon.style.transform = '';
+                    }, 1500);
                 }
             }
             e.target.value = '';
@@ -621,10 +722,10 @@
     });
 
     // --- Init ---
-    initStars();
+    initUniverse();
     resizeCanvas();
     initFiles();
-    updateTransform();
+    requestAnimationFrame(renderGameLoop);
 
 </script>
 </body>
